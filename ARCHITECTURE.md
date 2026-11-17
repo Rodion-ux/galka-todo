@@ -1,7 +1,7 @@
 # Галка — архитектура
 
 > «Галка» — список задач. Название двойное: галочка «сделано» и птица галка (она же на лого).
-> Визуальная база — `Rodion-ux/krivo-dashboard` (тёплая нейтральная палитра, `ty-*` типографика, токены `--figma-*`, светлая и тёмная тема).
+> Дизайн — «Ночная галка / Acid Ink», `docs/design/BRIEF.md`: чернильный интерфейс с одним лаймовым акцентом, тёмная тема основная. Каркас (структура, `ty-*`, правила) унаследован от `Rodion-ux/krivo-dashboard`.
 
 ## 1. Требования
 
@@ -14,6 +14,8 @@
 Дополнительно, малой ценой:
 - фильтр «Все / Активные / Готово» и счётчик оставшихся;
 - «Очистить выполненные»;
+- undo удаления и «Очистить выполненные» через тост «Вернуть»;
+- прогресс дня, конфетти при «всё сделано», хоткей «/»;
 - переключатель темы (светлая/тёмная/системная), как в Krivo;
 - синхронизация между вкладками (событие `storage`).
 
@@ -24,47 +26,54 @@
 | Слой | Выбор | Почему |
 |---|---|---|
 | Фреймворк | Next.js 16 (App Router), React 19, TypeScript strict | как в Krivo, нативно на Vercel |
-| Стили | Tailwind CSS v4 + CSS-переменные (урезанный `globals.css` из Krivo) | переносим визуальный язык один в один |
-| Шрифт | `geist` (GeistSans, GeistMono) | как в Krivo |
+| Стили | Tailwind CSS v4 + CSS-переменные `--g-*` в `globals.css` | токены light/dark, без hex в TSX |
+| Шрифт | `geist` (GeistSans, GeistMono) + Unbounded (`next/font/google`, cyrillic) | текст UI + дисплейный для вордмарка и счётчика |
 | Иконки | `lucide-react`, но **только через** `src/lib/icons.ts` | правило Krivo |
 | Утилиты | `clsx` + `tailwind-merge` → `cn()` | правило Krivo |
 | Состояние | собственный внешний стор + `useSyncExternalStore` | 0 зависимостей, корректный SSR/гидрация |
 | Хранение | `localStorage`, ключ `galka:tasks:v1` | ТЗ п.4, без бэкенда |
 | Тесты | Vitest (юнит для стора/хранилища) + Playwright smoke (QA) | |
 
-shadcn/base-ui **не тащим**: на одну страницу это лишний вес; кнопка, чекбокс и инпут пишутся вручную в стиле Krivo (классы из `krivo-dashboard/src/components/ui/button.tsx` и `checkbox.tsx`).
+shadcn/base-ui **не тащим**: на одну страницу это лишний вес; чекбокс, кнопки и поле пишутся вручную. Анимации — CSS/WAAPI, без motion-библиотек.
 
 ## 3. Структура
 
 ```
 src/
   app/
-    layout.tsx          — html lang="ru", шрифты, метаданные, favicon, ThemeInitScript
-    page.tsx            — серверный компонент, рендерит <TodoApp/>
-    globals.css         — токены Krivo (light + .dark), ty-* утилиты, reduced-motion
-    icon.svg            — лого (favicon)
+    layout.tsx          — html lang="ru", шрифты (Geist + Unbounded через next/font), метаданные, ThemeInitScript
+    page.tsx            — серверный компонент: фон-декор, панель, футер
+    globals.css         — токены --g-* (light + .dark), motion-токены, ty-* утилиты, анимации, reduced-motion
   components/
     todo-app.tsx        — 'use client', композиция экрана
-    app-header.tsx      — лого + название + ThemeToggle
-    task-composer.tsx   — форма добавления (input + кнопка)
-    task-filters.tsx    — сегмент-контрол Все/Активные/Готово + счётчик + «Очистить выполненные»
-    task-list.tsx       — список + пустые состояния
-    task-item.tsx       — строка: чекбокс, текст, кнопка удаления
+    app-header.tsx      — лого + вордмарк + ThemeToggle
+    logo.tsx            — обёртка знака (цвет по теме); logo-mark.tsx — сам SVG (currentColor)
+    background-decor.tsx — свечение, миллиметровка, шум
+    today-progress.tsx  — блок «Сегодня»: дата, счётчик «выполнено/всего», сегменты, конфетти
+    rolling-number.tsx  — перекат цифры
+    task-composer.tsx   — поле-плитка + круглая кнопка, Enter/Esc, хоткей «/», shake
+    task-filters.tsx    — radiogroup Все/Активные/Готово с бегунком + «Очистить выполненные»
+    task-list.tsx       — список, скелетон; empty-state.tsx — три пустых состояния
+    task-item.tsx       — строка: чекбокс, текст с зачёркиванием, удаление; анимации входа/выхода
+    undo-toast.tsx      — тост «Вернуть» (5 с, пауза на hover/фокус)
     theme-toggle.tsx
-    ui/button.tsx, ui/checkbox.tsx, ui/input.tsx
+    ui/checkbox.tsx, ui/kbd.tsx
   lib/
     tasks/
       types.ts          — Task, Filter
       storage.ts        — load/save + валидация, безопасно при отсутствии localStorage
-      store.ts          — внешний стор: getSnapshot/subscribe/actions
-      use-tasks.ts      — хук поверх useSyncExternalStore
-      store.test.ts     — Vitest
-      storage.test.ts
+      store.ts          — внешний стор: getSnapshot/subscribe/actions (+ restore для undo)
+      undo.ts           — стор последнего удаления для тоста «Вернуть»
+      use-tasks.ts      — хуки useTasks / useUndo поверх useSyncExternalStore
+      *.test.ts         — Vitest
+    confetti.ts         — конфетти-лайт на WAAPI
+    motion.ts           — prefersReducedMotion, кривые для WAAPI
+    today.ts            — дата/приветствие, часы через useSyncExternalStore
     icons.ts            — re-export нужных иконок lucide
     utils.ts            — cn()
-    theme.ts            — чтение/запись темы, init-скрипт
+    theme.ts            — чтение/запись темы (по умолчанию тёмная), init-скрипт
 public/
-  logo.svg
+  logo.svg              — фавикон
 ```
 
 Компоненты держим < 150 строк, по одному на файл.
@@ -99,16 +108,16 @@ UI ──actions──▶ store (in-memory Task[]) ──save──▶ localStor
   - подписка на `window` `storage` по ключу → перечитать и оповестить (синк вкладок).
 - Фильтр — локальный `useState` в `TodoApp`, в storage не пишется.
 
-## 6. UI / дизайн (по Krivo)
+## 6. UI / дизайн («Ночная галка», полная спецификация — `docs/design/BRIEF.md`)
 
-- Фон страницы `bg-background` (тёплый «стол» `#edece8`), центральная карточка `rounded-[24px] bg-card border border-figma-surface-secondary`, max-w ~640px, отступы 16px на мобиле.
-- Заголовок: лого 32px + «Галка» (`ty-page-title`) + подзаголовок `ty-subtitle`, например «Отмечай и забывай».
-- Composer: инпут `h-10 rounded-xl bg-figma-surface-secondary`, кнопка primary `bg-foreground text-background rounded-xl h-10` с иконкой Plus. Enter отправляет. Пустой ввод: кнопка disabled. Автофокус на десктопе, после добавления фокус остаётся в поле.
-- Строка задачи: `rounded-[10px]`, hover `bg-figma-surface-secondary`; чекбокс как в Krivo (`size-5 rounded-[6px]`); выполненная задача: `line-through text-figma-body-muted`; кнопка удаления (Trash2, ghost, 32px) видна на hover/focus-within на десктопе и всегда на тач-устройствах (`@media (hover:none)`).
-- Фильтры: сегмент-контрол `KRIVO_SEGMENTED` (`h-10 rounded-[12px] bg-figma-surface-secondary p-0.5`, активный `bg-background`).
-- Пустые состояния: нет задач вообще / нет активных («Всё сделано 🎉» без эмодзи-перегруза) / нет выполненных.
-- Анимации: появление и удаление строки через opacity/transform, 150–200ms, ease-out, с уважением `prefers-reduced-motion` (блок из Krivo `globals.css`).
-- A11y: `<form>` с `<label class="sr-only">`, чекбокс — настоящий `<input type="checkbox">` (стилизованный) или `role="checkbox"` с клавиатурой; кнопка удаления с `aria-label="Удалить «…»"`; список `<ul>`; `aria-live="polite"` для счётчика; видимый focus-visible ring.
+- Тёмная тема основная (по умолчанию), светлая — на тех же токенах `--g-*`. Один акцент — лайм `--g-accent`: «отмечено» и «добавить». Кобальт — только фокус-кольцо и конфетти.
+- Фон: лаймовое свечение сверху, миллиметровка вокруг панели, шум (`background-decor.tsx`, `pointer-events:none`). При «всё сделано» свечение усиливается (`body:has([data-all-done=true])`).
+- Desktop: панель 560px, радиус 28, поля 28. Mobile (< 640px): без внешней карточки, плитки строк и composer остаются.
+- Порядок: шапка (знак + вордмарк Unbounded + тема) → «Сегодня» (дата · приветствие, счётчик «3/7» с перекатом, сегменты ≤ 12 или бар) → composer → фильтры + «Очистить выполненные» → список → футер.
+- Строка: плитка 56px+, круглый чекбокс 26px (хит 44), отметка — пружинная заливка, прорисовка галочки, всплеск-кольцо, зачёркивание проездом; выполненная строка становится «пустой» плиткой с обводкой. Удаление: выезд + схлопывание через `grid-template-rows`, затем тост «Вернуть» на 5 с.
+- Пустые состояния: лаймовая плашка со знаком (нейтральная для «Готово»), заголовок Unbounded, призрачные строки для «нет задач».
+- Motion: CSS + WAAPI без библиотек, токены `--ease-*`/`--dur-*`; `prefers-reduced-motion` оставляет только цвет/прозрачность ≤ 120 мс и отключает конфетти, shake, покачивание.
+- A11y: `<label class="sr-only">Новая задача</label>`, нативные чекбоксы с подписью-текстом, `aria-label` у иконок-кнопок, фильтры — `radiogroup` со стрелками, прогресс — `role="progressbar"` с `aria-valuetext`, тост — `role="status"`. Хит-зоны ≥ 44px.
 - Весь UI-текст на русском, со склонениями: «1 задача / 2 задачи / 5 задач».
 
 ## 7. Краевые случаи (обязательно покрыть)

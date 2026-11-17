@@ -1,16 +1,18 @@
 import { AppHeader } from '@/components/app-header'
+import { BackgroundDecor } from '@/components/background-decor'
 import { TodoApp } from '@/components/todo-app'
-import { KRIVO_SURFACE } from '@/lib/krivo-ui'
-import { cn } from '@/lib/utils'
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-[640px] flex-col gap-4 px-4 py-8 sm:py-16">
-      <div className={cn(KRIVO_SURFACE, 'flex flex-col gap-6 p-4 sm:p-6')}>
-        <AppHeader />
-        <TodoApp />
-      </div>
-      <p className="ty-meta text-center">Задачи хранятся только в этом браузере.</p>
-    </main>
+    <>
+      <BackgroundDecor />
+      <main className="relative z-10 mx-auto flex w-full max-w-[560px] flex-col px-4 pt-5 pb-28 sm:box-content sm:px-6 sm:pt-[72px]">
+        <div className="flex flex-col max-sm:bg-transparent sm:g-panel sm:p-7">
+          <AppHeader />
+          <TodoApp />
+        </div>
+        <p className="ty-micro mt-6 text-center">Задачи хранятся только в этом браузере.</p>
+      </main>
+    </>
   )
 }

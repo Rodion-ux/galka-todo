@@ -1,26 +1,31 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { COMPOSER_INPUT_ID } from '@/components/task-composer'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Trash2 } from '@/lib/icons'
-import { KRIVO_ROW_HOVER } from '@/lib/krivo-ui'
 import type { Task } from '@/lib/tasks/types'
 import { cn } from '@/lib/utils'
 
 /** Страховка, если animationend не придёт (вкладка в фоне, display:none). */
-const EXIT_FALLBACK_MS = 300
+const EXIT_FALLBACK_MS = 400
+
+export type RowEnter = 'add' | 'cascade'
 
 type TaskItemProps = {
   task: Task
+  /** Когда смонтирован список: строки первого рендера — каскад, поздние (добавление, undo) — «поп». */
+  listMountedAt: number
+  index: number
   onToggle: (id: string) => void
   onRemove: (id: string) => void
 }
 
-export function TaskItem({ task, onToggle, onRemove }: TaskItemProps) {
+export function TaskItem({ task, listMountedAt, index, onToggle, onRemove }: TaskItemProps) {
   const ref = useRef<HTMLLIElement>(null)
   const [leaving, setLeaving] = useState(false)
+  // Анимация входа фиксируется при монтировании и дальше не меняется.
+  const [enterMode] = useState<RowEnter>(() => (Date.now() - listMountedAt < 100 ? 'cascade' : 'add'))
   const checkboxId = `task-${task.id}`
 
   useEffect(() => {
@@ -43,39 +48,45 @@ export function TaskItem({ task, onToggle, onRemove }: TaskItemProps) {
   return (
     <li
       ref={ref}
+      data-enter={enterMode}
+      data-leaving={leaving}
+      style={{ '--i': index } as CSSProperties}
       onAnimationEnd={(e) => {
-        if (leaving && e.animationName === 'task-out') onRemove(task.id)
+        if (leaving && e.animationName === 'row-leave') onRemove(task.id)
       }}
-      className={cn(
-        'group flex items-start gap-3 rounded-[10px] py-1 pr-1 pl-2 transition-colors',
-        KRIVO_ROW_HOVER,
-        leaving ? 'pointer-events-none animate-task-out' : 'animate-task-in',
-      )}
+      className="g-row-wrap"
     >
-      <Checkbox
-        id={checkboxId}
-        checked={task.done}
-        onChange={() => onToggle(task.id)}
-        className="mt-1.5"
-      />
-      <label
-        htmlFor={checkboxId}
+      <div
         className={cn(
-          'min-w-0 flex-1 cursor-pointer py-1.5 text-sm break-words text-figma-body transition-colors [overflow-wrap:anywhere]',
-          task.done && 'text-figma-body-muted line-through',
+          'g-row group flex min-h-14 items-start gap-3 rounded-2xl border py-4 pr-3 pl-4 transition-[background-color,border-color,box-shadow] duration-200',
+          task.done
+            ? 'border-g-border bg-transparent'
+            : 'g-edge border-transparent bg-g-row [@media(hover:hover)]:hover:bg-g-row-hover',
         )}
       >
-        {task.title}
-      </label>
-      <Button
-        variant="destructiveGhost"
-        size="icon-sm"
-        aria-label={`Удалить «${task.title}»`}
-        onClick={startRemove}
-        className="opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
-      >
-        <Trash2 aria-hidden="true" />
-      </Button>
+        <Checkbox
+          id={checkboxId}
+          checked={task.done}
+          onChange={() => onToggle(task.id)}
+          className="-mx-[9px] -my-2.5"
+        />
+        <label
+          htmlFor={checkboxId}
+          className="min-w-0 flex-1 cursor-pointer text-base leading-6 font-medium tracking-[-0.01em] break-words [overflow-wrap:anywhere]"
+        >
+          <span data-done={task.done} className={cn('g-strike', task.done ? 'text-g-done' : 'text-g-text')}>
+            {task.title}
+          </span>
+        </label>
+        <button
+          type="button"
+          aria-label={`Удалить «${task.title}»`}
+          onClick={startRemove}
+          className="g-hit -my-1.5 -mr-1 grid size-9 shrink-0 place-items-center rounded-xl text-g-muted transition-[opacity,color,background-color,transform] duration-150 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-g-danger-soft hover:text-g-danger focus-visible:bg-g-danger-soft focus-visible:text-g-danger focus-visible:opacity-100 active:scale-92 [@media(hover:hover)]:opacity-0 [@media(hover:none)]:opacity-60"
+        >
+          <Trash2 aria-hidden="true" className="size-[18px]" strokeWidth={1.9} />
+        </button>
+      </div>
     </li>
   )
 }

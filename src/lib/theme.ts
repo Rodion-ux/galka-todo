@@ -7,18 +7,21 @@ export function isThemePref(value: unknown): value is ThemePref {
   return value === 'light' || value === 'dark' || value === 'system'
 }
 
+/** Тема по умолчанию (ничего не выбрано): тёмная — в ней бренд звучит сильнее всего. */
+export const DEFAULT_THEME: ThemePref = 'dark'
+
 /**
  * Синхронный скрипт для <head>: ставит класс .dark на <html> до первой отрисовки.
  * Логика должна совпадать с resolveDark/applyTheme ниже.
  */
-export const themeInitScript = `(function(){var d=document.documentElement;try{var t=localStorage.getItem('${THEME_KEY}');var k=t==='dark'||(t!=='light'&&window.matchMedia('${DARK_QUERY}').matches);d.classList.toggle('dark',k);d.style.colorScheme=k?'dark':'light'}catch(e){}})()`
+export const themeInitScript = `(function(){var d=document.documentElement,k=true;try{var t=localStorage.getItem('${THEME_KEY}');k=t==='light'?false:t==='system'?window.matchMedia('${DARK_QUERY}').matches:true}catch(e){}d.classList.toggle('dark',k);d.style.colorScheme=k?'dark':'light'})()`
 
 export function readThemePref(): ThemePref {
   try {
     const value = window.localStorage.getItem(THEME_KEY)
-    return isThemePref(value) ? value : 'system'
+    return isThemePref(value) ? value : DEFAULT_THEME
   } catch {
-    return 'system'
+    return DEFAULT_THEME
   }
 }
 
@@ -43,7 +46,18 @@ export function applyTheme(pref: ThemePref) {
 
 const listeners = new Set<() => void>()
 
+let switchTimer: number | undefined
+
+/** На 250 мс включает плавную смену цветов (класс на <html>), без вечного transition. */
+function flagThemeSwitch() {
+  const root = document.documentElement
+  root.classList.add('theme-switching')
+  window.clearTimeout(switchTimer)
+  switchTimer = window.setTimeout(() => root.classList.remove('theme-switching'), 250)
+}
+
 export function writeThemePref(pref: ThemePref) {
+  flagThemeSwitch()
   try {
     window.localStorage.setItem(THEME_KEY, pref)
   } catch {
