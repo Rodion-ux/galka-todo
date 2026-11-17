@@ -1,27 +1,21 @@
 'use client'
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { Kbd } from '@/components/ui/kbd'
-import { ArrowUp } from '@/lib/icons'
-import { EASE_SPRING, prefersReducedMotion } from '@/lib/motion'
 import { TITLE_MAX_LENGTH } from '@/lib/tasks/types'
 import { cn } from '@/lib/utils'
 
 export const COMPOSER_INPUT_ID = 'task-input'
 const COUNTER_FROM = TITLE_MAX_LENGTH - 20
 
-const SHAKE: Keyframe[] = [0, -6, 6, -4, 4, 0].map((x) => ({ transform: `translateX(${x}px)` }))
-
-function isTypingTarget(el: EventTarget | null) {
+export function isTypingTarget(el: EventTarget | null) {
   if (el instanceof HTMLInputElement) return !/^(checkbox|radio|button|submit|reset)$/.test(el.type)
   return el instanceof HTMLElement && (el.isContentEditable || /^(TEXTAREA|SELECT)$/.test(el.tagName))
 }
 
+/** Поле ввода §5.10: «бумажная» плашка, кнопка «Добавить» внутри справа. Без kbd-чипов и подсказок. */
 export function TaskComposer({ onAdd }: { onAdd: (title: string) => unknown }) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  const tileRef = useRef<HTMLDivElement>(null)
-  const buttonRef = useRef<HTMLButtonElement>(null)
   const canSubmit = value.trim().length > 0
 
   useEffect(() => {
@@ -39,26 +33,14 @@ export function TaskComposer({ onAdd }: { onAdd: (title: string) => unknown }) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!canSubmit) return shake()
+    if (!canSubmit) return
     onAdd(value)
     // Очищаем сразу: второй быстрый Enter увидит пустое поле и ничего не добавит.
     setValue('')
     inputRef.current?.focus()
-    if (!prefersReducedMotion()) {
-      buttonRef.current?.animate([{ transform: 'scale(0.92)' }, { transform: 'scale(1)' }], {
-        duration: 280,
-        easing: EASE_SPRING,
-      })
-    }
-  }
-
-  function shake() {
-    if (!prefersReducedMotion()) tileRef.current?.animate(SHAKE, { duration: 300, easing: 'ease-out' })
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    // С пустым полем кнопка disabled и форма не отправится — подсказываем «тряской».
-    if (event.key === 'Enter' && !canSubmit) shake()
     if (event.key === 'Escape' && value !== '') {
       event.preventDefault()
       setValue('')
@@ -66,14 +48,11 @@ export function TaskComposer({ onAdd }: { onAdd: (title: string) => unknown }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
       <label htmlFor={COMPOSER_INPUT_ID} className="sr-only">
         Новая задача
       </label>
-      <div
-        ref={tileRef}
-        className="g-edge flex h-14 items-center gap-2 rounded-[20px] bg-g-row pr-2 pl-5 transition-[background-color,box-shadow] duration-200 focus-within:bg-(--g-composer-focus) focus-within:shadow-[0_0_0_2px_var(--g-cobalt)]"
-      >
+      <div className="flex h-14 items-center gap-2 rounded-xl border border-p-line bg-p-surface pr-1.5 pl-4 transition-[border-color] duration-(--dur-1) focus-within:border-p-ink">
         <input
           ref={inputRef}
           id={COMPOSER_INPUT_ID}
@@ -81,41 +60,26 @@ export function TaskComposer({ onAdd }: { onAdd: (title: string) => unknown }) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           maxLength={TITLE_MAX_LENGTH}
-          placeholder="Что нужно сделать?"
+          placeholder="Новая задача"
           autoComplete="off"
           enterKeyHint="done"
           aria-describedby={value.length >= COUNTER_FROM ? 'task-input-counter' : undefined}
-          className="peer h-full min-w-0 flex-1 bg-transparent text-[17px] leading-6 font-medium tracking-[-0.01em] text-g-text outline-none placeholder:text-g-muted focus-visible:outline-none"
+          className="h-full min-w-0 flex-1 bg-transparent text-base leading-6 tracking-[-0.005em] text-p-ink outline-none placeholder:text-p-placeholder focus-visible:outline-none sm:text-[17px]"
         />
-        {canSubmit ? (
-          <Kbd key="enter" className="g-fade-in max-sm:hidden [@media(hover:none)]:hidden">
-            Enter
-          </Kbd>
-        ) : (
-          <Kbd key="slash" className="g-fade-in peer-focus:hidden max-sm:hidden [@media(hover:none)]:hidden" title="Нажмите «/», чтобы начать ввод">
-            /
-          </Kbd>
-        )}
         <button
-          ref={buttonRef}
           type="submit"
           aria-label="Добавить задачу"
-          disabled={!canSubmit}
+          aria-disabled={!canSubmit}
           className={cn(
-            'g-hit grid size-10 shrink-0 place-items-center rounded-full transition-[background-color,color,box-shadow,filter,transform] duration-150 active:scale-92',
-            canSubmit
-              ? 'g-key hover:shadow-[0_0_20px_var(--g-accent-glow)] hover:brightness-105'
-              : 'bg-(--g-key-idle) text-g-muted',
+            'h-11 shrink-0 rounded-full px-4 text-sm leading-5 font-medium transition-[background-color,color] duration-(--dur-1)',
+            canSubmit ? 'bg-p-ink text-p-surface' : 'cursor-default bg-p-row-hover text-p-ink-3',
           )}
         >
-          <ArrowUp aria-hidden="true" className="size-5" strokeWidth={2.25} />
+          Добавить
         </button>
       </div>
       {value.length >= COUNTER_FROM && (
-        <p
-          id="task-input-counter"
-          className={cn('px-5 text-xs text-g-muted', value.length >= TITLE_MAX_LENGTH && 'text-g-danger')}
-        >
+        <p id="task-input-counter" className="px-4 text-sm leading-5 text-p-ink-2 tabular-nums">
           {value.length} из {TITLE_MAX_LENGTH} символов
         </p>
       )}

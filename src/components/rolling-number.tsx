@@ -23,7 +23,7 @@ export function RollingNumber({ value, className }: { value: number; className?:
         <span
           key={`out-${roll.prev}-${roll.value}`}
           aria-hidden="true"
-          className={cn('col-start-1 row-start-1', roll.dir === 'up' ? 'g-roll-out-up' : 'g-roll-out-down')}
+          className={cn('col-start-1 row-start-1', roll.dir === 'up' ? 'p-roll-out-up' : 'p-roll-out-down')}
           onAnimationEnd={() => setRoll((r) => ({ ...r, prev: null }))}
         >
           {roll.prev}
@@ -33,8 +33,8 @@ export function RollingNumber({ value, className }: { value: number; className?:
         key={`in-${roll.value}`}
         className={cn(
           'col-start-1 row-start-1',
-          roll.dir === 'up' && 'g-roll-in-up',
-          roll.dir === 'down' && 'g-roll-in-down',
+          roll.dir === 'up' && 'p-roll-in-up',
+          roll.dir === 'down' && 'p-roll-in-down',
         )}
       >
         {roll.value}

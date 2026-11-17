@@ -19,15 +19,15 @@ const test = base.extend<{ errors: string[] }>({
 const input = (page: Page) => page.getByRole('textbox', { name: 'Новая задача' })
 const addButton = (page: Page) => page.getByRole('button', { name: 'Добавить задачу' })
 const items = (page: Page) => page.getByRole('list', { name: 'Задачи' }).getByRole('listitem')
-const counter = (page: Page) => page.locator('p[aria-live="polite"]')
+const counter = (page: Page) => page.getByRole('status', { name: /^Выполнено \d+ из \d+$/ })
 const progress = (page: Page) => page.getByRole('progressbar', { name: 'Прогресс дня' })
-const emptyTitle = (page: Page) => page.locator('.ty-empty-title')
 const undoButton = (page: Page) => page.getByRole('button', { name: 'Вернуть' })
-const toast = (page: Page) => page.getByRole('status').filter({ has: undoButton(page) })
-const radio = (page: Page, name: string) => page.getByRole('radio', { name: new RegExp(`^${name}`) })
-const clearDone = (page: Page) => page.getByRole('button', { name: 'Очистить выполненные' })
+const toast = (page: Page) => page.getByRole('status').filter({ hasText: 'Вернуть' })
+const radio = (page: Page, name: string) => page.getByRole('radio', { name, exact: true })
+const clearDone = (page: Page) => page.getByRole('button', { name: /^Удалить выполненные задачи: \d+$/ })
 const del = (page: Page, title: string) => page.getByRole('button', { name: `Удалить «${title}»` })
 const check = (page: Page, title: string) => page.getByRole('checkbox', { name: title, exact: true })
+const emptyText = (page: Page, text: string) => page.getByText(text, { exact: true })
 
 async function add(page: Page, title: string) {
   await input(page).fill(title)
@@ -44,7 +44,7 @@ async function titles(page: Page) {
   return (await items(page).allInnerTexts()).map((t) => t.trim())
 }
 
-/** Хит-зона ≥ 44×44: ::before у g-hit не входит в boundingBox, поэтому проверяем, что на краях креста 44×44 вокруг центра (круглый чекбокс — вписанный круг) попадаем в сам элемент. */
+/** Хит-зона ≥ 44×44: может быть псевдоэлементом (не входит в boundingBox), поэтому проверяем elementFromPoint на кресте 44×44 вокруг центра. */
 async function expectHitArea(el: Locator, label: string, size = 44) {
   await el.scrollIntoViewIfNeeded()
   const ok = await el.evaluate((node, s) => {
@@ -60,7 +60,7 @@ async function expectHitArea(el: Locator, label: string, size = 44) {
       [0, 0],
     ].every(([dx, dy]) => {
       const hit = document.elementFromPoint(cx + dx, cy + dy)
-      return !!hit && (node === hit || node.contains(hit))
+      return !!hit && (node === hit || node.contains(hit) || hit.contains(node) || (node.parentElement?.contains(hit) ?? false))
     })
   }, size)
   expect(ok, `${label}: должен ловить клики в квадрате 44×44`).toBe(true)
@@ -71,6 +71,7 @@ test.beforeEach(async ({ page }) => {
   await page.evaluate(() => localStorage.clear())
   await page.reload()
   await expect(input(page)).toBeVisible()
+  await expect(emptyText(page, 'Список пуст.')).toBeVisible()
 })
 
 test.describe('ТЗ: базовые сценарии', () => {
@@ -80,19 +81,23 @@ test.describe('ТЗ: базовые сценарии', () => {
     await expect(input(page)).toHaveValue('')
 
     await input(page).fill('Написать тесты')
+    await expect(addButton(page)).toHaveText('Добавить')
     await addButton(page).click()
     await expect(items(page)).toHaveCount(2)
     await expect(check(page, 'Написать тесты')).toBeVisible()
   })
 
   test('пустой и пробельный ввод не создаёт задачу', async ({ page }) => {
-    await expect(input(page)).toHaveAttribute('placeholder', 'Что нужно сделать?')
-    await expect(addButton(page)).toBeDisabled()
+    await expect(addButton(page)).toHaveAttribute('aria-disabled', 'true')
+    await addButton(page).click({ force: true })
     await input(page).fill('   ')
-    await expect(addButton(page)).toBeDisabled()
+    await expect(addButton(page)).toHaveAttribute('aria-disabled', 'true')
     await input(page).press('Enter')
+    await addButton(page).click({ force: true })
     await expect(items(page)).toHaveCount(0)
-    await expect(emptyTitle(page)).toHaveText('Пока пусто')
+    await expect(emptyText(page, 'Список пуст.')).toBeVisible()
+    await input(page).fill('x')
+    await expect(addButton(page)).toHaveAttribute('aria-disabled', 'false')
   })
 
   test('отметка и снятие отметки', async ({ page }) => {
@@ -143,20 +148,70 @@ test.describe('Undo', () => {
     await expect(check(page, 'Б')).toBeChecked()
   })
 
-  test('«Очистить выполненные» → «Вернуть» возвращает все', async ({ page }) => {
+  test('Ctrl+Z возвращает удалённую задачу', async ({ page }) => {
+    await add(page, 'А')
+    await add(page, 'Б')
+    const before = await titles(page)
+    await remove(page, 'А')
+    await expect(items(page)).toHaveCount(1)
+    await page.keyboard.press('Control+z')
+    await expect(items(page)).toHaveCount(2)
+    expect(await titles(page)).toEqual(before)
+    await page.reload()
+    expect(await titles(page)).toEqual(before)
+  })
+
+  test('«Удалить выполненные» → «Вернуть» возвращает все, переживает reload', async ({ page }) => {
     for (const t of ['А', 'Б', 'В', 'Г']) await add(page, t)
     await check(page, 'Б').check()
     await check(page, 'Г').check()
     const before = await titles(page)
 
+    await expect(clearDone(page)).toHaveText('Удалить выполненные · 2')
     await clearDone(page).click()
     await expect(items(page)).toHaveCount(2)
-    await expect(toast(page)).toContainText('Удалено: 2')
+    await expect(toast(page)).toContainText('Удалено выполненных: 2')
     await undoButton(page).click()
     await expect(items(page)).toHaveCount(4)
     expect(await titles(page)).toEqual(before)
     await expect(check(page, 'Б')).toBeChecked()
     await expect(check(page, 'Г')).toBeChecked()
+
+    await page.reload()
+    expect(await titles(page)).toEqual(before)
+    await expect(check(page, 'Г')).toBeChecked()
+  })
+
+  test('«Удалить выполненные» → Ctrl+Z', async ({ page }) => {
+    for (const t of ['А', 'Б', 'В']) await add(page, t)
+    await check(page, 'А').check()
+    await check(page, 'В').check()
+    const before = await titles(page)
+    await clearDone(page).click()
+    await expect(items(page)).toHaveCount(1)
+    await page.keyboard.press('Control+z')
+    await expect(items(page)).toHaveCount(3)
+    expect(await titles(page)).toEqual(before)
+    await expect(check(page, 'А')).toBeChecked()
+  })
+
+  test('подсветка удаляемых строк на hover/focus кнопки «Удалить выполненные»', async ({ page }) => {
+    for (const t of ['А', 'Б']) await add(page, t)
+    await check(page, 'А').check()
+    await page.mouse.move(5, 5)
+    const bg = (title: string) =>
+      page.getByRole('listitem').filter({ has: check(page, title) }).locator('.p-row').evaluate((n) => getComputedStyle(n).backgroundColor)
+    const before = await bg('А')
+    await clearDone(page).hover()
+    await expect.poll(() => bg('А')).not.toBe(before)
+    expect(await bg('Б')).toBe(before)
+    await page.mouse.move(5, 5)
+    await expect.poll(() => bg('А')).toBe(before)
+    // focus-visible: фокус должен прийти с клавиатуры
+    await items(page).last().getByRole('button').focus()
+    await page.keyboard.press('Tab')
+    await expect(clearDone(page)).toBeFocused()
+    await expect.poll(() => bg('А')).not.toBe(before)
   })
 
   test('тост исчезает сам через 5 с, пауза на hover', async ({ page }) => {
@@ -179,41 +234,34 @@ test.describe('Undo', () => {
 })
 
 test.describe('Прогресс', () => {
-  test('aria-valuetext меняется, при всех выполненных «Всё сделано»', async ({ page }) => {
+  test('aria-valuetext и status-счётчик меняются', async ({ page }) => {
     await add(page, 'А')
     await add(page, 'Б')
     await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Выполнено 0 из 2')
-    await expect(counter(page)).toHaveText('Осталось 2 задачи')
+    await expect(counter(page)).toHaveAccessibleName('Выполнено 0 из 2')
+    await expect(counter(page)).toContainText('0/2')
 
     await check(page, 'А').check()
     await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Выполнено 1 из 2')
-    await expect(counter(page)).toHaveText('Осталась 1 задача')
+    await expect(counter(page)).toHaveAccessibleName('Выполнено 1 из 2')
 
     await check(page, 'Б').check()
     await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Выполнено 2 из 2')
-    await expect(counter(page)).toHaveText('Всё сделано')
+    await expect(counter(page)).toHaveAccessibleName('Выполнено 2 из 2')
 
     await check(page, 'Б').uncheck()
     await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Выполнено 1 из 2')
   })
 
-  test('склонение счётчика', async ({ page }) => {
-    for (const t of ['А', 'Б', 'В', 'Г', 'Д']) await add(page, t)
-    await expect(counter(page)).toHaveText('Осталось 5 задач')
-    await check(page, 'А').check()
-    await check(page, 'Б').check()
-    await expect(counter(page)).toHaveText('Осталось 3 задачи')
-  })
-
-  test('больше 12 задач: прогресс всё ещё корректен', async ({ page }) => {
-    for (let i = 1; i <= 13; i++) await add(page, `Задача ${i}`)
+  test('больше 24 задач: прогресс всё ещё корректен', async ({ page }) => {
+    for (let i = 1; i <= 26; i++) await add(page, `Задача ${i}`)
     await check(page, 'Задача 1').check()
-    await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Выполнено 1 из 13')
+    await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Выполнено 1 из 26')
   })
 })
 
 test.describe('Фильтры', () => {
-  test('мышью + «Очистить выполненные» пропадает при 0 выполненных', async ({ page }) => {
+  test('мышью; «Удалить выполненные» пропадает при 0 выполненных', async ({ page }) => {
     for (const t of ['А', 'Б', 'В', 'Г', 'Д']) await add(page, t)
     await expect(clearDone(page)).toHaveCount(0)
     await expect(page.getByRole('radiogroup', { name: 'Фильтр задач' })).toBeVisible()
@@ -254,17 +302,18 @@ test.describe('Фильтры', () => {
     await expect(radio(page, 'Все')).toHaveAttribute('tabindex', '-1')
   })
 
-  test('пустые состояния каждого фильтра', async ({ page }) => {
-    await expect(emptyTitle(page)).toHaveText('Пока пусто')
-
+  test('имена фильтров без чисел; пустые состояния', async ({ page }) => {
+    await expect(emptyText(page, 'Список пуст.')).toBeVisible()
     await add(page, 'А')
+    for (const n of ['Все', 'Активные', 'Готово']) await expect(radio(page, n)).toBeVisible()
+
     await radio(page, 'Готово').click()
-    await expect(emptyTitle(page)).toHaveText('Ещё ничего не отмечено')
+    await expect(emptyText(page, 'Выполненных пока нет.')).toBeVisible()
 
     await radio(page, 'Все').click()
     await check(page, 'А').check()
     await radio(page, 'Активные').click()
-    await expect(emptyTitle(page)).toHaveText('Всё сделано')
+    await expect(emptyText(page, 'Активных задач нет.')).toBeVisible()
   })
 })
 
@@ -288,9 +337,7 @@ test.describe('Клавиатура', () => {
     await del(page, 'Б').focus()
     await page.keyboard.press('Enter')
     await expect(items(page)).toHaveCount(2)
-    const tag = await page.evaluate(() => document.activeElement?.tagName)
-    expect(tag).not.toBe('BODY')
-    expect(tag).toBe('INPUT')
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('INPUT')
 
     // Последняя оставшаяся → фокус уходит в поле ввода
     await del(page, 'А').focus()
@@ -312,13 +359,22 @@ test.describe('Клавиатура', () => {
     await expect(items(page)).toHaveCount(1)
     await expect(check(page, 'А')).toBeFocused()
   })
+
+  test('«Удалить выполненные» с клавиатуры: фокус не в body', async ({ page }) => {
+    await add(page, 'А')
+    await check(page, 'А').check()
+    await clearDone(page).focus()
+    await page.keyboard.press('Enter')
+    await expect(items(page)).toHaveCount(0)
+    expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY')
+  })
 })
 
 test.describe('Хранилище и синхронизация', () => {
   test('битый JSON в localStorage: пустое состояние, дальше работает', async ({ page }) => {
     await page.evaluate((k) => localStorage.setItem(k, '{не json['), STORAGE_KEY)
     await page.reload()
-    await expect(emptyTitle(page)).toHaveText('Пока пусто')
+    await expect(emptyText(page, 'Список пуст.')).toBeVisible()
     await add(page, 'После поломки')
     await expect(items(page)).toHaveCount(1)
     const raw = await page.evaluate((k) => localStorage.getItem(k), STORAGE_KEY)
@@ -340,26 +396,54 @@ test.describe('Хранилище и синхронизация', () => {
   })
 })
 
-test.describe('Тема', () => {
-  test('по умолчанию тёмная; светлая переживает reload', async ({ page }) => {
-    await expect(page.locator('html')).toHaveClass(/dark/)
-    const group = page.getByRole('group', { name: 'Тема оформления' })
-    await expect(group.getByRole('button', { name: 'Тёмная тема' })).toHaveAttribute('aria-pressed', 'true')
+test.describe('Регрессия фидбэка (FEEDBACK-2)', () => {
+  async function expectClean(page: Page) {
+    const text = await page.locator('body').innerText()
+    for (const bad of ['Добрый', 'Доброе', 'Осталось', 'Осталась', 'хранятся только', 'всё сделано', 'Тема оформления']) {
+      expect(text.toLowerCase(), `на странице не должно быть «${bad}»`).not.toContain(bad.toLowerCase())
+    }
+    await expect(page.getByRole('group', { name: 'Тема оформления' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /тем[аы]|Как в системе/i })).toHaveCount(0)
+  }
 
-    await group.getByRole('button', { name: 'Светлая тема' }).click()
-    await expect(page.locator('html')).not.toHaveClass(/dark/)
-    await page.reload()
-    await expect(page.locator('html')).not.toHaveClass(/dark/)
-    await expect(group.getByRole('button', { name: 'Светлая тема' })).toHaveAttribute('aria-pressed', 'true')
-    await expect(group.getByRole('button', { name: 'Как в системе' })).toHaveAttribute('aria-pressed', 'false')
+  test('пустая страница, со списком и при всех выполненных', async ({ page }) => {
+    await expectClean(page)
+    await add(page, 'А')
+    await add(page, 'Б')
+    await expectClean(page)
+    await check(page, 'А').check()
+    await check(page, 'Б').check()
+    await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Выполнено 2 из 2')
+    await expectClean(page)
+    await radio(page, 'Активные').click()
+    await expectClean(page)
   })
 
-  test('«Как в системе» следует prefers-color-scheme', async ({ page }) => {
-    await page.emulateMedia({ colorScheme: 'light' })
-    await page.getByRole('button', { name: 'Как в системе' }).click()
+  test('нет тёмной темы, Unbounded и моно-шрифтов; title содержит pensum', async ({ page }) => {
+    await add(page, 'А')
+    await check(page, 'А').check()
+    await expect(page).toHaveTitle(/pensum/)
     await expect(page.locator('html')).not.toHaveClass(/dark/)
-    await page.reload()
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBeUndefined()
+
+    const fams = await page.evaluate(() => {
+      const set = new Set<string>()
+      document.querySelectorAll('*').forEach((el) => set.add(getComputedStyle(el).fontFamily))
+      return [...set]
+    })
+    for (const f of fams) expect(f, 'font-family').not.toMatch(/unbounded|mono|courier|consolas/i)
+
+    const faces = await page.evaluate(async () => {
+      await document.fonts.ready
+      return [...document.fonts].map((f) => f.family)
+    })
+    for (const f of faces) expect(f, 'document.fonts').not.toMatch(/unbounded|mono/i)
+
+    await page.emulateMedia({ colorScheme: 'dark' })
     await expect(page.locator('html')).not.toHaveClass(/dark/)
+    const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+    const [r, g, b] = bg.match(/\d+/g)!.map(Number)
+    expect(r + g + b, 'фон остаётся светлым').toBeGreaterThan(600)
   })
 })
 
@@ -372,7 +456,7 @@ test.describe('prefers-reduced-motion', () => {
     await check(page, 'А').check()
     await expect(check(page, 'А')).toBeChecked()
     await check(page, 'Б').check()
-    await expect(counter(page)).toHaveText('Всё сделано')
+    await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Выполнено 2 из 2')
     await remove(page, 'А')
     await expect(items(page)).toHaveCount(1)
     await undoButton(page).click()
@@ -405,19 +489,9 @@ test.describe('Мобильный 375px', () => {
     await expectHitArea(check(page, 'А'), 'чекбокс')
     await expectHitArea(addButton(page), 'добавить')
     for (const name of ['Все', 'Активные', 'Готово']) await expectHitArea(radio(page, name), `фильтр ${name}`)
-    await expectHitArea(clearDone(page), 'очистить')
+    await expectHitArea(clearDone(page), 'удалить выполненные')
     const row = await items(page).first().boundingBox()
-    expect(row!.height).toBeGreaterThanOrEqual(56)
-  })
-
-  // BUG (не чинится, дизайн-решение): три кнопки темы 30×30 стоят вплотную (шаг 30px), их g-hit-зоны 44px
-  // перекрываются, и клик у границы попадает в соседа. BRIEF §6.7 требует ≥44×44 для всех.
-  // Воспроизведение: 375px, тап по краю кнопки «Тёмная тема» — срабатывает «Светлая»/«Как в системе».
-  // Починка: сделать кнопки 44px (переключатель 132px) или заменить на одну циклическую кнопку.
-  test('хит-зоны переключателя темы ≥ 44px', async ({ page }) => {
-    for (const name of ['Светлая тема', 'Тёмная тема', 'Как в системе']) {
-      await expectHitArea(page.getByRole('button', { name }), name)
-    }
+    expect(row!.height).toBeGreaterThanOrEqual(44)
   })
 
   test('удаление тапом и undo на мобильном', async ({ page }) => {

@@ -1,22 +1,22 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { TaskComposer } from '@/components/task-composer'
-import { TaskFilters, type TaskCounts } from '@/components/task-filters'
+import { useEffect, useMemo, useState } from 'react'
+import { ClearDoneButton } from '@/components/clear-done-button'
+import { ProgressCounter } from '@/components/progress-counter'
+import { COMPOSER_INPUT_ID, TaskComposer } from '@/components/task-composer'
+import { TaskFilters } from '@/components/task-filters'
 import { TaskList } from '@/components/task-list'
-import { TodayProgress } from '@/components/today-progress'
 import { UndoToast } from '@/components/undo-toast'
+import { ROW_EXIT_MS, prefersReducedMotion } from '@/lib/motion'
 import { useTasks } from '@/lib/tasks/use-tasks'
 import type { Filter } from '@/lib/tasks/types'
 
 export function TodoApp() {
   const { tasks, hydrated, add, toggle, remove, clearDone } = useTasks()
   const [filter, setFilter] = useState<Filter>('all')
+  const [clearing, setClearing] = useState(false)
 
-  const counts = useMemo<TaskCounts>(() => {
-    const done = tasks.filter((t) => t.done).length
-    return { all: tasks.length, active: tasks.length - done, done }
-  }, [tasks])
+  const doneCount = useMemo(() => tasks.filter((t) => t.done).length, [tasks])
 
   const visible = useMemo(() => {
     if (filter === 'active') return tasks.filter((t) => !t.done)
@@ -24,26 +24,59 @@ export function TodoApp() {
     return tasks
   }, [tasks, filter])
 
-  const hasTasks = hydrated && counts.all > 0
+  // Сначала выполненные строки схлопываются, потом уходят из стора одним действием (один тост, один undo).
+  useEffect(() => {
+    if (!clearing) return
+    const timer = window.setTimeout(() => {
+      clearDone()
+      setClearing(false)
+    }, ROW_EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [clearing, clearDone])
+
+  function handleClearDone() {
+    // Кнопка сейчас исчезнет — фокус в поле ввода, а не в никуда.
+    document.getElementById(COMPOSER_INPUT_ID)?.focus()
+    if (prefersReducedMotion()) clearDone()
+    else setClearing(true)
+  }
+
+  const hasTasks = hydrated && tasks.length > 0
 
   return (
-    <div className="mt-7 flex flex-col gap-6">
-      {hasTasks && <TodayProgress done={counts.done} total={counts.all} />}
-      <TaskComposer onAdd={add} />
+    <div className="flex flex-col">
+      <div className="mt-8 sm:mt-12">
+        {hydrated ? (
+          <ProgressCounter done={doneCount} total={tasks.length} />
+        ) : (
+          <div aria-hidden="true" className="h-[92px] sm:h-[114px]" />
+        )}
+      </div>
+      <div className="mt-7 sm:mt-10">
+        <TaskComposer onAdd={add} />
+      </div>
       {hasTasks && (
-        <TaskFilters filter={filter} counts={counts} onFilterChange={setFilter} onClearDone={clearDone} />
+        <div className="mt-6">
+          <TaskFilters filter={filter} onFilterChange={setFilter} />
+        </div>
       )}
-      <div className="-mt-1">
+      <div className="mt-2">
         <TaskList
           key={filter}
           tasks={visible}
-          totalCount={counts.all}
+          totalCount={tasks.length}
           filter={filter}
           hydrated={hydrated}
+          clearing={clearing}
           onToggle={toggle}
           onRemove={remove}
         />
       </div>
+      {doneCount > 0 && !clearing && (
+        <div className="mt-4 flex justify-end">
+          <ClearDoneButton count={doneCount} onClear={handleClearDone} />
+        </div>
+      )}
       <UndoToast />
     </div>
   )

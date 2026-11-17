@@ -1,38 +1,38 @@
 'use client'
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { COMPOSER_INPUT_ID } from '@/components/task-composer'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Trash2 } from '@/lib/icons'
+import { X } from '@/lib/icons'
+import { ROW_EXIT_MS } from '@/lib/motion'
 import type { Task } from '@/lib/tasks/types'
 import { cn } from '@/lib/utils'
 
 /** Страховка, если animationend не придёт (вкладка в фоне, display:none). */
-const EXIT_FALLBACK_MS = 400
-
-export type RowEnter = 'add' | 'cascade'
+const EXIT_FALLBACK_MS = ROW_EXIT_MS + 100
 
 type TaskItemProps = {
   task: Task
-  /** Когда смонтирован список: строки первого рендера — каскад, поздние (добавление, undo) — «поп». */
+  /** Когда смонтирован список: строки, пришедшие позже (добавление, undo), раскрываются; при смене фильтра — без анимации. */
   listMountedAt: number
-  index: number
+  /** Строку убирает «Удалить выполненные»: только анимация, само удаление делает TodoApp. */
+  clearing: boolean
   onToggle: (id: string) => void
   onRemove: (id: string) => void
 }
 
-export function TaskItem({ task, listMountedAt, index, onToggle, onRemove }: TaskItemProps) {
+export function TaskItem({ task, listMountedAt, clearing, onToggle, onRemove }: TaskItemProps) {
   const ref = useRef<HTMLLIElement>(null)
-  const [leaving, setLeaving] = useState(false)
+  const [removing, setRemoving] = useState(false)
   // Анимация входа фиксируется при монтировании и дальше не меняется.
-  const [enterMode] = useState<RowEnter>(() => (Date.now() - listMountedAt < 100 ? 'cascade' : 'add'))
+  const [enter] = useState(() => Date.now() - listMountedAt > 100)
   const checkboxId = `task-${task.id}`
 
   useEffect(() => {
-    if (!leaving) return
+    if (!removing) return
     const timer = window.setTimeout(() => onRemove(task.id), EXIT_FALLBACK_MS)
     return () => window.clearTimeout(timer)
-  }, [leaving, onRemove, task.id])
+  }, [removing, onRemove, task.id])
 
   function startRemove() {
     const li = ref.current
@@ -42,39 +42,29 @@ export function TaskItem({ task, listMountedAt, index, onToggle, onRemove }: Tas
       const target = sibling?.querySelector('input') ?? document.getElementById(COMPOSER_INPUT_ID)
       target?.focus()
     }
-    setLeaving(true)
+    setRemoving(true)
   }
 
   return (
     <li
       ref={ref}
-      data-enter={enterMode}
-      data-leaving={leaving}
-      style={{ '--i': index } as CSSProperties}
+      data-enter={enter ? 'add' : undefined}
+      data-leaving={removing || clearing}
       onAnimationEnd={(e) => {
-        if (leaving && e.animationName === 'row-leave') onRemove(task.id)
+        if (removing && e.target === e.currentTarget && e.animationName === 'row-close') onRemove(task.id)
       }}
-      className="g-row-wrap"
+      className="p-row-wrap"
     >
       <div
-        className={cn(
-          'g-row group flex min-h-14 items-start gap-3 rounded-2xl border py-4 pr-3 pl-4 transition-[background-color,border-color,box-shadow] duration-200',
-          task.done
-            ? 'border-g-border bg-transparent'
-            : 'g-edge border-transparent bg-g-row [@media(hover:hover)]:hover:bg-g-row-hover',
-        )}
+        data-done={task.done}
+        className="p-row group -mx-2 grid grid-cols-[33px_minmax(0,1fr)_31px] items-start rounded-lg px-2 py-1"
       >
-        <Checkbox
-          id={checkboxId}
-          checked={task.done}
-          onChange={() => onToggle(task.id)}
-          className="-mx-[9px] -my-2.5"
-        />
+        <Checkbox id={checkboxId} checked={task.done} onChange={() => onToggle(task.id)} className="-ml-[11px]" />
         <label
           htmlFor={checkboxId}
-          className="min-w-0 flex-1 cursor-pointer text-base leading-6 font-medium tracking-[-0.01em] break-words [overflow-wrap:anywhere]"
+          className="cursor-pointer py-2.5 pl-1 text-base leading-6 tracking-[-0.005em] [overflow-wrap:anywhere]"
         >
-          <span data-done={task.done} className={cn('g-strike', task.done ? 'text-g-done' : 'text-g-text')}>
+          <span data-done={task.done} className={cn('p-strike', task.done ? 'text-p-ink-2' : 'text-p-ink')}>
             {task.title}
           </span>
         </label>
@@ -82,9 +72,9 @@ export function TaskItem({ task, listMountedAt, index, onToggle, onRemove }: Tas
           type="button"
           aria-label={`Удалить «${task.title}»`}
           onClick={startRemove}
-          className="g-hit -my-1.5 -mr-1 grid size-9 shrink-0 place-items-center rounded-xl text-g-muted transition-[opacity,color,background-color,transform] duration-150 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-g-danger-soft hover:text-g-danger focus-visible:bg-g-danger-soft focus-visible:text-g-danger focus-visible:opacity-100 active:scale-92 [@media(hover:hover)]:opacity-0 [@media(hover:none)]:opacity-60"
+          className="grid size-11 place-items-center rounded-lg text-p-ink-3 transition-[opacity,color] duration-(--dur-1) group-focus-within:opacity-100 group-hover:opacity-100 hover:text-p-ink focus-visible:opacity-100 [@media(hover:hover)]:opacity-0"
         >
-          <Trash2 aria-hidden="true" className="size-[18px]" strokeWidth={1.9} />
+          <X aria-hidden="true" className="size-[18px]" strokeWidth={1.75} />
         </button>
       </div>
     </li>

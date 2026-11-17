@@ -1,131 +1,79 @@
 @import "tailwindcss";
 
 /*
- * «Ночная галка / Acid Ink» — docs/design/BRIEF.md §4.
- * Токены --g-* (light в :root, dark в .dark), проброс в Tailwind через @theme inline:
- * bg-g-row, text-g-muted, border-g-border… Тёмная тема основная.
+ * pensum — «Бумага и чернила», docs/design/BRIEF-v2.md §5.
+ * Одна светлая тема. Токены --p-* в :root, проброс в Tailwind через @theme inline:
+ * bg-p-paper, text-p-ink-2, border-p-line… Киноварь (--p-accent) — только «сделано».
+ * Никаких градиентов, свечений, цветных теней, blur и фоновых картинок.
  */
 
 @source not "../../public";
 
-@custom-variant dark (&:is(.dark, .dark *));
-
 @theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-display: var(--font-unbounded), var(--font-geist-sans), ui-sans-serif, sans-serif;
+  --font-sans: var(--font-golos), ui-sans-serif, system-ui, sans-serif;
+  --font-brand: var(--font-brand-serif), ui-serif, Georgia, serif;
 
-  --color-g-bg: var(--g-bg);
-  --color-g-surface: var(--g-surface);
-  --color-g-row: var(--g-row);
-  --color-g-row-hover: var(--g-row-hover);
-  --color-g-border: var(--g-border);
-  --color-g-border-strong: var(--g-border-strong);
-  --color-g-text: var(--g-text);
-  --color-g-muted: var(--g-text-muted);
-  --color-g-done: var(--g-text-done);
-  --color-g-accent: var(--g-accent);
-  --color-g-on-accent: var(--g-on-accent);
-  --color-g-accent-text: var(--g-accent-text);
-  --color-g-cobalt: var(--g-cobalt);
-  --color-g-danger: var(--g-danger);
-  --color-g-danger-soft: var(--g-danger-soft);
-  --color-g-logo: var(--g-logo);
-  --color-g-thumb: var(--g-thumb);
+  --color-p-paper: var(--p-paper);
+  --color-p-surface: var(--p-surface);
+  --color-p-row-hover: var(--p-row-hover);
+  --color-p-line: var(--p-line);
+  --color-p-track: var(--p-track);
+  --color-p-ink: var(--p-ink);
+  --color-p-ink-2: var(--p-ink-2);
+  --color-p-ink-3: var(--p-ink-3);
+  --color-p-placeholder: var(--p-placeholder);
+  --color-p-accent: var(--p-accent);
+  --color-p-on-accent: var(--p-on-accent);
+  --color-p-accent-tint: var(--p-accent-tint);
+  --color-p-toast-muted: var(--p-toast-muted);
+  --color-p-toast-rule: var(--p-toast-rule);
+}
 
-  /* совместимость со старыми классами */
-  --color-background: var(--g-bg);
-  --color-foreground: var(--g-text);
-  --color-card: var(--g-surface);
-  --color-muted: var(--g-row);
-  --color-muted-foreground: var(--g-text-muted);
-  --color-border: var(--g-border);
-
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+@theme {
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
 }
 
 :root {
   color-scheme: light;
-  --g-bg: #eaeae5;
-  --g-surface: #fafaf7;
-  --g-row: #f0f0ea;
-  --g-row-hover: #e6e6df;
-  --g-border: rgba(17, 17, 19, 0.08);
-  --g-border-strong: #76767e;
-  --g-text: #111113;
-  --g-text-muted: #5b5b63;
-  --g-text-done: #62626a;
-  --g-accent: #d4ff3a;
-  --g-accent-deep: color-mix(in srgb, var(--g-accent) 80%, #8fbf00);
-  --g-on-accent: #111113;
-  --g-accent-text: #4a6600;
-  --g-accent-glow: rgba(160, 200, 0, 0.35);
-  --g-cobalt: #3341f0;
-  --g-danger: #b5300e;
-  --g-danger-soft: color-mix(in srgb, #b5300e 10%, transparent);
-  --g-orange: #ff7a2f;
-  /* производные роли */
-  --g-logo: var(--g-text);
-  --g-thumb: var(--g-surface);
-  --g-composer-focus: var(--g-surface);
-  --g-key-idle: rgba(17, 17, 19, 0.06);
-  --g-edge: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --g-panel-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 2px 6px rgba(17, 17, 19, 0.05),
-    0 24px 48px -24px rgba(17, 17, 19, 0.18);
-  --g-glow-opacity: 0.5;
-  --g-noise-opacity: 0.025;
-  --g-counter-halo: none;
 
-  --ease-spring: linear(0, 0.06 3%, 0.24 7%, 0.52 12%, 0.8 18%, 0.97 24%, 1.05 30%, 1.07 35%, 1.05 42%, 1.01 52%, 0.995 62%, 1 80%, 1);
-  --dur-fast: 120ms;
-  --dur-base: 200ms;
-  --dur-slow: 320ms;
-}
+  /* §5.2 палитра */
+  --p-paper: #f4f2ed;
+  --p-surface: #fcfbf8;
+  --p-row-hover: #ece9e2;
+  --p-line: #e2ded5;
+  --p-track: #cdc8bd;
+  --p-ink: #1a1917;
+  --p-ink-2: #5c5852;
+  --p-placeholder: #6f6b64;
+  --p-ink-3: #8a857c;
+  --p-accent: #c93a1c;
+  --p-on-accent: #fcfbf8;
+  --p-accent-tint: color-mix(in srgb, #c93a1c 9%, #f4f2ed);
+  --p-toast-muted: #a8a39a;
+  --p-toast-rule: rgb(252 251 248 / 0.16);
+  /* §5.7: единственная тень — у тоста, нейтральная */
+  --p-toast-shadow: 0 8px 24px -6px rgb(26 25 23 / 0.18), 0 1px 2px rgb(26 25 23 / 0.08);
 
-.dark {
-  color-scheme: dark;
-  --g-bg: #0b0b0c;
-  --g-surface: #141416;
-  --g-row: #1c1c1f;
-  --g-row-hover: #25252a;
-  --g-border: rgba(255, 255, 255, 0.07);
-  --g-border-strong: #7a7a82;
-  --g-text: #f4f4f0;
-  --g-text-muted: #a3a3aa;
-  --g-text-done: #8c8c93;
-  --g-accent-text: #d4ff3a;
-  --g-accent-glow: rgba(212, 255, 58, 0.35);
-  --g-cobalt: #7c87ff;
-  --g-danger: #ff6b4a;
-  --g-danger-soft: color-mix(in srgb, #ff6b4a 14%, transparent);
-  --g-logo: var(--g-accent);
-  --g-thumb: var(--g-row-hover);
-  --g-composer-focus: var(--g-row-hover);
-  --g-key-idle: rgba(255, 255, 255, 0.06);
-  --g-edge: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --g-panel-shadow: 0 0 0 1px var(--g-border), 0 1px 0 rgba(255, 255, 255, 0.05) inset,
-    0 30px 80px -20px rgba(0, 0, 0, 0.7);
-  --g-glow-opacity: 0.35;
-  --g-noise-opacity: 0.035;
-  --g-counter-halo: 0 0 24px var(--g-accent-glow);
+  /* §5.11 motion */
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --dur-3: 240ms;
 }
 
 @layer base {
   * {
-    @apply border-g-border;
+    @apply border-p-line;
   }
 
   html {
     @apply font-sans antialiased;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    background-color: var(--g-bg);
-    color: var(--g-text);
+    background-color: var(--p-paper);
+    color: var(--p-ink);
   }
 
   button:not(:disabled),
@@ -133,90 +81,15 @@
     cursor: pointer;
   }
 
-  button:disabled {
-    cursor: not-allowed;
-  }
-
+  /* §5.8: нейтральное кольцо чернилами */
   :where(button, [role="button"], [role="radio"], a[href], input, textarea, select):focus-visible {
-    outline: 2px solid var(--g-cobalt);
+    outline: 2px solid var(--p-ink);
     outline-offset: 2px;
   }
 }
 
-/* ─── Смена темы: цвета плавно 200 мс только на время переключения ─── */
-html.theme-switching *,
-html.theme-switching *::before,
-html.theme-switching *::after {
-  transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out),
-    border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out) !important;
-}
-
-/* ─── Фон: свечение, миллиметровка, шум (§4.2) ─── */
-.g-decor {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.g-decor > * {
-  position: absolute;
-  inset: 0;
-}
-
-.g-decor__glow {
-  background: radial-gradient(640px 360px at 50% -120px, var(--g-accent-glow), transparent 70%);
-  opacity: var(--g-glow-opacity);
-  transition: opacity 600ms var(--ease-out);
-}
-
-body:has([data-all-done="true"]) .g-decor__glow {
-  opacity: 0.6;
-}
-
-.g-decor__grid {
-  background-image: linear-gradient(var(--g-border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--g-border) 1px, transparent 1px);
-  background-size: 48px 48px;
-  background-position: calc(50% + 24px) 0;
-  mask-image: radial-gradient(ellipse 60% 50% at 50% 30%, #000 30%, transparent 75%);
-}
-
-/* На мобиле панели нет и сетка лежит прямо под текстом — делаем её тише. */
-@media (max-width: 639px) {
-  .g-decor__grid {
-    opacity: 0.5;
-  }
-}
-
-.g-decor__noise {
-  opacity: var(--g-noise-opacity);
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-/* ─── Поверхности ─── */
-@utility g-panel {
-  background-color: var(--g-surface);
-  border-radius: 28px;
-  box-shadow: var(--g-panel-shadow);
-}
-
-@utility g-edge {
-  box-shadow: var(--g-edge);
-}
-
-/* «Клавиша»: лаймовая кнопка с подсвеченной гранью */
-@utility g-key {
-  background-color: var(--g-accent);
-  color: var(--g-on-accent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -2px 0 rgba(0, 0, 0, 0.14),
-    0 6px 18px -6px var(--g-accent-glow);
-}
-
 /* Хит-зона 44 px поверх визуально меньшего контрола */
-@utility g-hit {
+@utility p-hit {
   position: relative;
   &::before {
     content: "";
@@ -228,48 +101,57 @@ body:has([data-all-done="true"]) .g-decor__glow {
   }
 }
 
-/* ─── Типографика (§4.3) ─── */
-@utility ty-wordmark {
-  font-family: var(--font-display);
-  font-size: 22px;
-  line-height: 24px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
+/* ─── Счётчик «3/7» (§5.4) ─── */
 @utility ty-counter {
-  font-family: var(--font-display);
-  font-size: 56px;
-  line-height: 56px;
-  font-weight: 600;
-  letter-spacing: -0.04em;
+  font-size: 96px;
+  line-height: 88px;
+  font-weight: 500;
+  letter-spacing: -0.045em;
   font-variant-numeric: tabular-nums;
-  @media (max-width: 480px) {
-    font-size: 44px;
-    line-height: 44px;
+  @media (max-width: 639px) {
+    font-size: 72px;
+    line-height: 66px;
   }
 }
 
-@utility ty-empty-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  line-height: 26px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+@keyframes roll-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30%);
+  }
+}
+@keyframes roll-out-up {
+  to {
+    opacity: 0;
+    transform: translateY(-30%);
+  }
+}
+@keyframes roll-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-30%);
+  }
+}
+@keyframes roll-out-down {
+  to {
+    opacity: 0;
+    transform: translateY(30%);
+  }
 }
 
-@utility ty-micro {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--g-text-muted);
+.p-roll-in-up { animation: roll-in-up var(--dur-2) var(--ease-out) both; }
+.p-roll-out-up { animation: roll-out-up var(--dur-2) var(--ease-out) both; }
+.p-roll-in-down { animation: roll-in-down var(--dur-2) var(--ease-out) both; }
+.p-roll-out-down { animation: roll-out-down var(--dur-2) var(--ease-out) both; }
+
+/* Сегмент степпера заполняется слева направо */
+.p-seg__fill {
+  transform-origin: left;
+  transition: transform var(--dur-3) var(--ease-out);
 }
 
-/* ─── Чекбокс (§4.5, motion §4.6) ─── */
-.g-check {
+/* ─── Чекбокс (§5.10) ─── */
+.p-check {
   position: relative;
   display: grid;
   place-items: center;
@@ -278,7 +160,7 @@ body:has([data-all-done="true"]) .g-decor__glow {
   flex-shrink: 0;
 }
 
-.g-check__input {
+.p-check__input {
   position: absolute;
   inset: 0;
   margin: 0;
@@ -288,249 +170,206 @@ body:has([data-all-done="true"]) .g-decor__glow {
   z-index: 1;
 }
 
-.g-check__input:focus-visible {
+.p-check__input:focus-visible {
   outline: none;
 }
 
-.g-check__box {
+.p-check__box {
   position: relative;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
-  box-shadow: inset 0 0 0 2px var(--g-border-strong);
-  transition: transform 80ms var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  box-shadow: inset 0 0 0 1.5px var(--p-ink-3);
   pointer-events: none;
 }
 
-.g-check__fill {
+.p-check__input:focus-visible + .p-check__box {
+  outline: 2px solid var(--p-ink);
+  outline-offset: 2px;
+}
+
+.p-check__fill {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--g-accent);
+  background: var(--p-accent);
   transform: scale(0.6);
   opacity: 0;
-  transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out);
+  transition: transform var(--dur-1) var(--ease-in), opacity var(--dur-1) var(--ease-in);
 }
 
-.g-check__mark {
+.p-check__mark {
   position: absolute;
   inset: 0;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   fill: none;
-  stroke: var(--g-on-accent);
-  stroke-width: 2.5;
+  stroke: var(--p-on-accent);
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-dasharray: 20;
   stroke-dashoffset: 20;
-  transition: stroke-dashoffset 160ms var(--ease-out), opacity 120ms;
+  transition: stroke-dashoffset var(--dur-1) var(--ease-in);
 }
 
-.g-check__burst {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: 0 0 0 1.5px var(--g-accent);
-  opacity: 0;
+.p-check__input:checked + .p-check__box {
+  box-shadow: none;
 }
 
-.g-check__input:active + .g-check__box {
-  transform: scale(0.88);
-}
-
-.g-check__input:checked + .g-check__box {
-  box-shadow: inset 0 0 0 2px transparent;
-}
-
-.g-check__input:checked + .g-check__box .g-check__fill {
+.p-check__input:checked + .p-check__box .p-check__fill {
   transform: scale(1);
   opacity: 1;
-  transition: transform 320ms var(--ease-spring), opacity 120ms var(--ease-out);
+  transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out);
 }
 
-.g-check__input:checked + .g-check__box .g-check__mark {
+.p-check__input:checked + .p-check__box .p-check__mark {
   stroke-dashoffset: 0;
-  transition: stroke-dashoffset 220ms var(--ease-in-out) 60ms;
+  transition: stroke-dashoffset var(--dur-2) var(--ease-out) 60ms;
 }
 
 @media (hover: hover) {
-  .g-check__input:not(:checked):hover + .g-check__box {
-    box-shadow: inset 0 0 0 2px var(--g-text-muted);
-  }
-  .g-check__input:not(:checked):hover + .g-check__box .g-check__mark {
-    stroke: var(--g-text-muted);
-    stroke-dashoffset: 0;
-    opacity: 0.25;
+  .p-check__input:not(:checked):hover + .p-check__box {
+    box-shadow: inset 0 0 0 1.5px var(--p-ink);
   }
 }
 
 /* ─── Строка задачи ─── */
-.g-row:has(.g-check__input:focus-visible) {
-  box-shadow: 0 0 0 2px var(--g-cobalt);
-}
 
-/* Зачёркивание едет слева направо; на многострочном тексте — по каждой строке */
-.g-strike {
-  background-image: linear-gradient(var(--g-text-done), var(--g-text-done));
+/* Зачёркивание 1.5px рисуется слева направо; на многострочном тексте — по каждой строке. */
+.p-strike {
+  background-image: linear-gradient(var(--p-ink-3), var(--p-ink-3));
   background-repeat: no-repeat;
-  background-position: 100% 58%;
-  background-size: 0% 2px;
+  background-position: 0 52%;
+  background-size: 0% 1.5px;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
-  transition: background-size 160ms var(--ease-out), color var(--dur-base) var(--ease-out);
+  transition: background-size var(--dur-1) var(--ease-in), color var(--dur-2) var(--ease-out);
 }
 
-.g-strike[data-done="true"] {
-  background-position: 0 58%;
-  background-size: 100% 2px;
-  transition: background-size 260ms var(--ease-in-out) 80ms, color var(--dur-base) var(--ease-out);
+.p-strike[data-done="true"] {
+  background-size: 100% 1.5px;
+  transition: background-size var(--dur-3) var(--ease-out) 60ms, color var(--dur-2) var(--ease-out);
 }
 
-/* Вход и выход строки */
-.g-row-wrap {
+/* Обёртка строки: схлопывание/раскрытие через grid-template-rows, волосяная линия между строками. */
+.p-row-wrap {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: 1fr;
-  margin-top: 6px;
 }
 
-.g-row-wrap:first-child {
-  margin-top: 0;
-}
-
-.g-row-wrap > * {
+.p-row-wrap > * {
   min-height: 0;
 }
 
-.g-row-wrap[data-enter="add"] {
-  animation: row-add 280ms var(--ease-spring) both;
+.p-row {
+  position: relative;
+  transition: background-color var(--dur-1) var(--ease-out);
 }
 
-.g-row-wrap[data-enter="cascade"] {
-  animation: row-fade 160ms var(--ease-out) both;
-  animation-delay: calc(min(var(--i, 0), 7) * 20ms);
-}
-
-.g-row-wrap[data-leaving="true"] {
+/* Волосяная линия между строками — в ширину колонки (подложка строки шире на 8px с каждой стороны). */
+.p-row-wrap + .p-row-wrap > .p-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: 8px;
+  height: 1px;
+  background: var(--p-line);
   pointer-events: none;
-  animation: row-leave 320ms var(--ease-out) both;
 }
 
-@keyframes row-add {
+@media (hover: hover) {
+  .p-row:hover {
+    background-color: var(--p-row-hover);
+  }
+  /* Под подложкой линии сверху и снизу не торчат из скруглений. */
+  .p-row:hover::before,
+  .p-row-wrap:has(> .p-row:hover) + .p-row-wrap > .p-row::before {
+    opacity: 0;
+  }
+}
+
+/* Предпросмотр «Удалить выполненные»: подсвечены ровно те строки, что уйдут. */
+body:has(.p-clear-done:is(:hover, :focus-visible)) {
+  & .p-row[data-done="true"] {
+    background-color: var(--p-accent-tint);
+  }
+  & .p-row[data-done="true"]::before,
+  & .p-row-wrap:has(> .p-row[data-done="true"]) + .p-row-wrap > .p-row::before {
+    opacity: 0;
+  }
+}
+
+.p-row-wrap[data-enter="add"] {
+  animation: row-open var(--dur-2) var(--ease-out) both;
+}
+.p-row-wrap[data-enter="add"] > * {
+  animation: row-in var(--dur-2) var(--ease-out) both;
+}
+
+.p-row-wrap[data-leaving="true"] {
+  pointer-events: none;
+  animation: row-close var(--dur-2) var(--ease-in) var(--dur-1) both;
+}
+.p-row-wrap[data-leaving="true"] > * {
+  animation: row-out var(--dur-1) linear both;
+}
+
+@keyframes row-open {
   from {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.98);
-  }
-}
-
-@keyframes row-fade {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes row-leave {
-  0% {
-    opacity: 1;
-    transform: translateX(0);
-    grid-template-rows: 1fr;
-  }
-  44% {
-    opacity: 0;
-    transform: translateX(12px);
-    grid-template-rows: 1fr;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(12px);
     grid-template-rows: 0fr;
-    margin-top: 0;
   }
 }
-
-/* ─── Счётчик дня ─── */
-@keyframes roll-in-up {
+@keyframes row-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(-4px);
   }
 }
-@keyframes roll-out-up {
+@keyframes row-out {
   to {
     opacity: 0;
-    transform: translateY(-8px);
   }
 }
-@keyframes roll-in-down {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-}
-@keyframes roll-out-down {
+@keyframes row-close {
   to {
-    opacity: 0;
-    transform: translateY(8px);
+    grid-template-rows: 0fr;
   }
 }
-
-.g-roll-in-up { animation: roll-in-up var(--dur-base) var(--ease-out) both; }
-.g-roll-out-up { animation: roll-out-up var(--dur-base) var(--ease-out) both; }
-.g-roll-in-down { animation: roll-in-down var(--dur-base) var(--ease-out) both; }
-.g-roll-out-down { animation: roll-out-down var(--dur-base) var(--ease-out) both; }
 
 /* ─── Тост ─── */
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(8px);
   }
 }
 @keyframes toast-out {
   to {
     opacity: 0;
-    transform: translateY(16px);
   }
 }
-@keyframes toast-ring {
+@keyframes toast-timer {
   to {
-    stroke-dashoffset: 44;
+    transform: scaleX(0);
   }
 }
 
-.g-toast { animation: toast-in 260ms var(--ease-spring) both; }
-.g-toast[data-leaving="true"] { animation: toast-out 160ms var(--ease-out) both; }
-.g-toast__ring {
-  stroke-dasharray: 44;
-  stroke-dashoffset: 0;
-  animation: toast-ring 5s linear forwards;
+.p-toast { animation: toast-in var(--dur-2) var(--ease-out) both; }
+.p-toast[data-leaving="true"] { animation: toast-out var(--dur-1) linear both; }
+.p-toast__timer {
+  transform-origin: left;
+  animation: toast-timer 5s linear forwards;
 }
-.g-toast[data-paused="true"] .g-toast__ring { animation-play-state: paused; }
+.p-toast[data-paused="true"] .p-toast__timer { animation-play-state: paused; }
 
-/* ─── Пустое состояние, shake, всплывающие мелочи ─── */
-@keyframes bob {
-  50% {
-    transform: translateY(-4px);
-  }
+/* Фокус внутри тёмного тоста — светлым кольцом */
+.p-toast :focus-visible {
+  outline-color: var(--p-surface);
 }
-.g-bob { animation: bob 4s ease-in-out infinite; }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-}
-.g-fade-in { animation: fade-in var(--dur-fast) var(--ease-out) both; }
-
-@keyframes skeleton {
-  50% {
-    opacity: 0.55;
-  }
-}
-.g-skeleton { animation: skeleton 1.4s ease-in-out infinite; }
-
-/* ─── Reduced motion (§4.6): только цвет и прозрачность, ≤ 120 мс ─── */
+/* ─── Reduced motion (§5.11): движения нет, прозрачность ≤ 120 мс ─── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -542,22 +381,11 @@ body:has([data-all-done="true"]) .g-decor__glow {
     transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
-  .g-check__fill,
-  .g-check__mark,
-  .g-strike,
-  .g-check__box {
-    transition-property: opacity, color, box-shadow !important;
-    transition-duration: 120ms !important;
-  }
-  .g-check__input:active + .g-check__box {
-    transform: none;
-  }
-  .g-check__fill {
+  .p-check__fill {
     transform: none !important;
+    transition: opacity 120ms linear !important;
   }
-  .g-toast__ring,
-  .g-bob,
-  .g-skeleton {
+  .p-toast__timer {
     animation: none !important;
   }
 }

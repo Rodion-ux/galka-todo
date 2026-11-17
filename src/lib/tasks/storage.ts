@@ -1,5 +1,6 @@
 import { TITLE_MAX_LENGTH, type StoredTasks, type Task } from './types'
 
+// Ключ остался от прежнего имени проекта: переименование стёрло бы задачи у текущих пользователей.
 export const STORAGE_KEY = 'galka:tasks:v1'
 
 /** Минимальный интерфейс хранилища — localStorage или фейк в тестах. */

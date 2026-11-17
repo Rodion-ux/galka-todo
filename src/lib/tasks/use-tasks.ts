@@ -11,7 +11,7 @@ function remove(id: string) {
 
 function clearDone() {
   const removed = taskStore.clearDone()
-  undoStore.push(`Удалено: ${removed.length}`, removed)
+  undoStore.push(`Удалено выполненных: ${removed.length}`, removed)
 }
 
 export function useTasks() {
